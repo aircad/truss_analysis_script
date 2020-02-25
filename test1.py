@@ -31,7 +31,7 @@ MAX_HEIGHT = 9.5 # (cm)
 MAX_LENGTH = 40
 COMPRESSION_COMPENSATION = 4
 ITERATION_SIZE = 1 # (cm)
-NUM_ITERATION = 3
+NUM_ITERATION = 1
 
 """
 ---------
@@ -158,10 +158,47 @@ def linkEvaluation(linkForces = [], nodeData = [], linkData = [], forceData = []
 def NodeWiggler(nodes = [], ends = [], iterationDelta = 0):
     nodeID = []
     index = 0
+    # does not allow end wiggling
     for node in nodes:
         if str(index) not in ends:
             nodeID.append(index)
         index+=1
+    nodesArray = [[]]
+    #accomodating for the possibilities
+    for ID in nodeID:
+        newNodesArray = []
+        for data in nodesArray:
+            for x in range((2*NUM_ITERATION+1)**2):
+                newNodesArray.append(data.copy())
+            
+        nodesArray = newNodesArray
+        #print(nodesArray)
+        xIter = -NUM_ITERATION
+        yIter = -NUM_ITERATION
+        
+        for nodeSeries in nodesArray:
+            nodeSeries.append((str(int(nodes[ID][0])+(xIter*ITERATION_SIZE)), str(int(nodes[ID][1])+(yIter*ITERATION_SIZE)), nodes[ID][2]))
+            xIter += 1
+            if xIter == NUM_ITERATION+1:
+                xIter = -NUM_ITERATION
+                yIter += 1
+            if yIter == NUM_ITERATION+1:
+                yIter = -NUM_ITERATION
+    for each in nodesArray:
+        assert(nodesArray.count(each) == 1), "oof not unique generated nodes"
+    for nodeSeries in nodesArray:
+        # Assumes ends are in ascending order
+        for end in ends:
+            nodeSeries.insert(int(end),nodes[int(end)])
+        xMax = -10000
+        xMin = 10000
+        yMax = -10000
+        yMin = 10000
+            
+            
+            
+        
+        
     
 
     
@@ -232,7 +269,7 @@ node_Data.close()
 #print(forceData)
 #print(endData)
 
-#NodeWiggler(nodeData, endData, ITERATION_SIZE)
+NodeWiggler(nodeData, endData, ITERATION_SIZE)
 
 
 #creating truss processing file
