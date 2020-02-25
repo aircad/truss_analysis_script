@@ -29,6 +29,9 @@ DENSITY = 0.141 #(g/cm^3)
 GEO_FILE_NAME = "test"
 MAX_HEIGHT = 9.5 # (cm)
 MAX_LENGTH = 40
+COMPRESSION_COMPENSATION = 4
+ITERATION_SIZE = 1 # (cm)
+NUM_ITERATION = 3
 
 """
 ---------
@@ -99,7 +102,15 @@ def processTruss(endData = [], forceData = {}, linkData = []):
     return Q
 
 def linkEvaluation(linkForces = [], nodeData = [], linkData = [], forceData = []):
-    linkArea = abs(linkForces)*SAFE_FAC * 10000/ULT_STREN
+    
+    linkArea = []
+    for link in linkForces:
+        if link > 0:
+            linkArea.append(link*SAFE_FAC*10000/ULT_STREN)
+        else:
+            linkArea.append(-link*SAFE_FAC*COMPRESSION_COMPENSATION*10000/ULT_STREN)
+    
+    #linkArea = abs(linkForces)*SAFE_FAC * 10000/ULT_STREN
 
     print("Link Areas (cm^2) ", linkArea) # units = cm^2
 
@@ -143,7 +154,20 @@ def linkEvaluation(linkForces = [], nodeData = [], linkData = [], forceData = []
 
     return linkArea, linkLength, trussMass, strengthWeightRatio
 
+# outputs a list of possible node configurations
+def NodeWiggler(nodes = [], ends = [], iterationDelta = 0):
+    nodeID = []
+    index = 0
+    for node in nodes:
+        if str(index) not in ends:
+            nodeID.append(index)
+        index+=1
+    
 
+    
+
+
+    
 """
 ----
 Main
@@ -202,12 +226,14 @@ for d in data:
         endData.append(temp[0])
 
 node_Data.close()
-"""
-print(nodeData)
-print(linkData)
-print(forceData)
-print(endData)
-"""
+
+#print(nodeData)
+#print(linkData)
+#print(forceData)
+#print(endData)
+
+#NodeWiggler(nodeData, endData, ITERATION_SIZE)
+
 
 #creating truss processing file
 filePrep(nodeData, linkData)
