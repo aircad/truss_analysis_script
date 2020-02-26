@@ -155,7 +155,7 @@ def linkEvaluation(linkForces = [], nodeData = [], linkData = [], forceData = []
     return linkArea, linkLength, trussMass, strengthWeightRatio
 
 # outputs a list of possible node configurations
-def NodeWiggler(nodes = [], ends = []):
+def NodeWiggler(nodes = [], ends = [], forceNode = 0):
     nodeID = []
     index = 0
     # does not allow end wiggling
@@ -167,23 +167,38 @@ def NodeWiggler(nodes = [], ends = []):
     #accomodating for the possibilities
     for ID in nodeID:
         newNodesArray = []
-        for data in nodesArray:
-            for x in range((2*NUM_ITERATION+1)**2):
-                newNodesArray.append(data.copy())
+        # checking for forceNode
+        if ID != forceNode:
+            for data in nodesArray:
+                for x in range((2*NUM_ITERATION+1)**2):
+                    newNodesArray.append(data.copy())
+            nodesArray = newNodesArray
+            #print(nodesArray)
+            xIter = -NUM_ITERATION
+            yIter = -NUM_ITERATION
             
-        nodesArray = newNodesArray
-        #print(nodesArray)
-        xIter = -NUM_ITERATION
-        yIter = -NUM_ITERATION
-        
-        for nodeSeries in nodesArray:
-            nodeSeries.append((str(int(nodes[ID][0])+(xIter*ITERATION_SIZE)), str(int(nodes[ID][1])+(yIter*ITERATION_SIZE)), nodes[ID][2]))
-            xIter += 1
-            if xIter == NUM_ITERATION+1:
-                xIter = -NUM_ITERATION
+            for nodeSeries in nodesArray:
+                nodeSeries.append((str(float(nodes[ID][0])+(xIter*ITERATION_SIZE)), str(float(nodes[ID][1])+(yIter*ITERATION_SIZE)), nodes[ID][2]))
+                xIter += 1
+                if xIter == NUM_ITERATION+1:
+                    xIter = -NUM_ITERATION
+                    yIter += 1
+                if yIter == NUM_ITERATION+1:
+                    yIter = -NUM_ITERATION
+        else:
+            for data in nodesArray:
+                for x in range(2*NUM_ITERATION+1):
+                    newNodesArray.append(data.copy())        
+            nodesArray = newNodesArray
+            #print(nodesArray)
+            yIter = -NUM_ITERATION
+            
+            for nodeSeries in nodesArray:
+                nodeSeries.append((nodes[ID][0], str(float(nodes[ID][1])+(yIter*ITERATION_SIZE)), nodes[ID][2]))
                 yIter += 1
-            if yIter == NUM_ITERATION+1:
-                yIter = -NUM_ITERATION
+                if yIter == NUM_ITERATION+1:
+                    yIter = -NUM_ITERATION
+                    
     for each in nodesArray:
         assert(nodesArray.count(each) == 1), "oof not unique generated nodes"
 
@@ -199,19 +214,16 @@ def NodeWiggler(nodes = [], ends = []):
         yMax = -10000
         yMin = 10000
         for node in nodeSeries:
-            if int(node[0]) >= xMax:
-                xMax = int(node[0])
-            if int(node[0]) <= xMin:
-                xMin = int(node[0])
-            if int(node[1]) >= yMax:
-                yMax = int(node[1])
-            if int(node[1]) <= yMin:
-                yMin = int(node[1])
+            if float(node[0]) >= xMax:
+                xMax = float(node[0])
+            if float(node[0]) <= xMin:
+                xMin = float(node[0])
+            if float(node[1]) >= yMax:
+                yMax = float(node[1])
+            if float(node[1]) <= yMin:
+                yMin = float(node[1])
         if xMax - xMin > MAX_LENGTH or yMax - yMin > MAX_HEIGHT:
             removalList.append(nodeSeries)
-        
-    #removing the original
-    nodesArray.remove(nodes)
     #removing unwanted:
     for each in removalList:
         nodesArray.remove(each)
@@ -284,7 +296,12 @@ node_Data.close()
 #print(forceData)
 #print(endData)
 
-nodesArray = NodeWiggler(nodeData, endData)
+#getting force node id
+temp = forceData.keys()
+forceNode = 0
+for first in temp:
+    forceNode = int(first)
+nodesArray = NodeWiggler(nodeData, endData, forceNode)
 
 print("""
         ---------
@@ -337,6 +354,7 @@ print("""
 index = 0
 for node in bestSeries:
     print("node " + str(index) + ": (" + node[0] + "," + node[1] + "," + node[2] + ")") #printing out nodes of best result
+    index += 1
     
 print("Forces in Links (N) " ,bestForces) # units = newtons
 print("Link Areas (cm^2) ", bestArea) # units = cm^2
