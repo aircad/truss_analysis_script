@@ -27,8 +27,8 @@ ULT_STREN = 24860000  #(Pa)
 SAFE_FAC = 1
 DENSITY = 0.141 #(g/cm^3)
 GEO_FILE_NAME = "test"
-MAX_HEIGHT = 9.5 # (cm)
-MAX_LENGTH = 40
+MAX_HEIGHT = 9 # (cm)
+MAX_LENGTH = 39.5
 COMPRESSION_COMPENSATION = 4
 ITERATION_SIZE = 1 # (cm)
 NUM_ITERATION = 1
@@ -98,7 +98,7 @@ def processTruss(endData = [], forceData = {}, linkData = []):
 
     U, Q = displmethod.solver(mesh,model,ele,load)
  
-    print("Forces in Links (N) " ,Q) # units = newtons
+    #print("Forces in Links (N) " ,Q) # units = newtons
     return Q
 
 def linkEvaluation(linkForces = [], nodeData = [], linkData = [], forceData = []):
@@ -112,7 +112,7 @@ def linkEvaluation(linkForces = [], nodeData = [], linkData = [], forceData = []
     
     #linkArea = abs(linkForces)*SAFE_FAC * 10000/ULT_STREN
 
-    print("Link Areas (cm^2) ", linkArea) # units = cm^2
+    #print("Link Areas (cm^2) ", linkArea) # units = cm^2
 
     linkVolume = []
     linkLength = []
@@ -127,8 +127,8 @@ def linkEvaluation(linkForces = [], nodeData = [], linkData = [], forceData = []
         linkLength.append(round(length,4))
         linkVolume.append(round(linkArea[index]*length,4))
 
-    print("Link Lengths (cm) ", linkLength) # units = cm
-    print("Link Volumes (cm^3) ", linkVolume) # units = cm^3
+    #print("Link Lengths (cm) ", linkLength) # units = cm
+    #print("Link Volumes (cm^3) ", linkVolume) # units = cm^3
 
     # finding mass of links and truss
     
@@ -149,13 +149,13 @@ def linkEvaluation(linkForces = [], nodeData = [], linkData = [], forceData = []
 
     strengthWeightRatio = round(appLoad*1000/9.81 / trussMass,4) # (g) = 1N*1000/(9.81m/s^2)
 
-    print("Mass (g) ", trussMass)
-    print("Strength to Mass", strengthWeightRatio)
+    #print("Mass (g) ", trussMass)
+    #print("Strength to Mass", strengthWeightRatio)
 
     return linkArea, linkLength, trussMass, strengthWeightRatio
 
 # outputs a list of possible node configurations
-def NodeWiggler(nodes = [], ends = [], iterationDelta = 0):
+def NodeWiggler(nodes = [], ends = []):
     nodeID = []
     index = 0
     # does not allow end wiggling
@@ -186,24 +186,39 @@ def NodeWiggler(nodes = [], ends = [], iterationDelta = 0):
                 yIter = -NUM_ITERATION
     for each in nodesArray:
         assert(nodesArray.count(each) == 1), "oof not unique generated nodes"
+
+    removalList = []
     for nodeSeries in nodesArray:
         # Assumes ends are in ascending order
         for end in ends:
             nodeSeries.insert(int(end),nodes[int(end)])
+        
+        #removing possibilities that violate constraints
         xMax = -10000
         xMin = 10000
         yMax = -10000
         yMin = 10000
-            
-            
-            
+        for node in nodeSeries:
+            if int(node[0]) >= xMax:
+                xMax = int(node[0])
+            if int(node[0]) <= xMin:
+                xMin = int(node[0])
+            if int(node[1]) >= yMax:
+                yMax = int(node[1])
+            if int(node[1]) <= yMin:
+                yMin = int(node[1])
+        if xMax - xMin > MAX_LENGTH or yMax - yMin > MAX_HEIGHT:
+            removalList.append(nodeSeries)
         
+    #removing the original
+    nodesArray.remove(nodes)
+    #removing unwanted:
+    for each in removalList:
+        nodesArray.remove(each)
+    #print(nodesArray)
+    #for nodeSeries in nodesArray:
         
-    
-
-    
-
-
+    return nodesArray
     
 """
 ----
@@ -269,9 +284,13 @@ node_Data.close()
 #print(forceData)
 #print(endData)
 
-NodeWiggler(nodeData, endData, ITERATION_SIZE)
+nodesArray = NodeWiggler(nodeData, endData)
 
-
+print("""
+        ---------
+        ORIGINAL:
+        ---------
+        """)
 #creating truss processing file
 filePrep(nodeData, linkData)
 
@@ -281,3 +300,46 @@ linkForces = processTruss(endData, forceData, linkData)
 #optimizing truss cross sections and calculating efficiency
 linkArea, linkLen, trussMass, str_to_mass = linkEvaluation(linkForces, nodeData, linkData, forceData)
 
+#outputting results
+print("Forces in Links (N) " ,linkForces) # units = newtons
+print("Link Areas (cm^2) ", linkArea) # units = cm^2
+print("Link Lengths (cm) ", linkLen) # units = cm
+print("Mass (g) ", trussMass) # units = g
+print("Strength to Mass", str_to_mass) # g/g
+
+#checking iterations:
+bestSeries = []
+bestForces = []
+bestArea = []
+bestLen = []
+bestMass = 1000000
+bestRatio = 0
+for nodeSeries in nodesArray:
+    #creating truss processing file
+    filePrep(nodeSeries, linkData)
+    #Finding forces in links
+    linkForces = processTruss(endData, forceData, linkData)
+    #optimizing truss cross sections and calculating efficiency
+    linkArea, linkLen, trussMass, str_to_mass = linkEvaluation(linkForces, nodeSeries, linkData, forceData)
+    if trussMass < bestMass:
+        bestSeries = nodeSeries
+        bestForces = linkForces
+        bestArea = linkArea
+        bestLen = linkLen
+        bestMass = trussMass
+        bestRatio = str_to_mass
+
+print("""
+        -----
+        BEST:
+        -----
+        """)
+index = 0
+for node in bestSeries:
+    print("node " + str(index) + ": (" + node[0] + "," + node[1] + "," + node[2] + ")") #printing out nodes of best result
+    
+print("Forces in Links (N) " ,bestForces) # units = newtons
+print("Link Areas (cm^2) ", bestArea) # units = cm^2
+print("Link Lengths (cm) ", bestLen) # units = cm
+print("Mass (g) ", bestMass) # units = g
+print("Strength to Mass", bestRatio) # g/g
