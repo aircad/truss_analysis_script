@@ -101,6 +101,10 @@ def processTruss(endData = [], forceData = {}, linkData = []):
     #print("Forces in Links (N) " ,Q) # units = newtons
     return Q
 
+#distance finding function
+def findDist(p,q):
+    return math.sqrt(sum((px-qx)**2 for px,qx in zip(p,q)))
+
 def linkEvaluation(linkForces = [], nodeData = [], linkData = [], forceData = []):
     
     linkArea = []
@@ -122,7 +126,10 @@ def linkEvaluation(linkForces = [], nodeData = [], linkData = [], forceData = []
         node1 = nodeData[int(link[0])]
         node2 = nodeData[int(link[1])]
         #length in cm
-        length = math.dist([float(node1[0]),float(node1[1]),float(node1[2])], [float(node2[0]),float(node2[1]),float(node2[2])])
+        
+        #length = math.dist([float(node1[0]),float(node1[1]),float(node1[2])], [float(node2[0]),float(node2[1]),float(node2[2])])
+        length = findDist([float(node1[0]),float(node1[1]),float(node1[2])], [float(node2[0]),float(node2[1]),float(node2[2])])
+        
         #print("Node1:", node1, " Node2:", node2, " length:", length)        
         linkLength.append(round(length,4))
         linkVolume.append(round(linkArea[index]*length,4))
